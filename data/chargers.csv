@@ -1,0 +1,7 @@
+type,charge_rate
+DC,25.0
+DC,30.0
+DC,60.0
+AC,3.3
+AC,7.2
+AC,11.0

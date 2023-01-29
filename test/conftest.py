@@ -1,6 +1,6 @@
 import pytest
 
-from evcharaka.entity import *
+from evcharaka.plan import *
 
 
 @pytest.fixture

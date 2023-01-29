@@ -7,7 +7,22 @@ import datetime as dt
 
 import pandas as pd
 
-from evcharaka.util import hours_human_readable
+
+# Formatting
+def fractional_hours_human_readable(hours: float) -> str:
+    return f"{int(hours):02d}:{int((hours - int(hours)) * 60):02d}"
+
+
+def hours_human_readable(total_minutes: int) -> str:
+    hours, minutes = divmod(total_minutes, 60)
+    days, hours = divmod(hours, 24)
+    text = [
+        f"{days: 3d} days" if days else ' ' * 8,
+        f"{hours:02d} hr" if hours else ' ' * 5,
+        f"{minutes:02d} min" if minutes else ' ' * 6,
+    ]
+    return ' '.join(text)
+
 
 @dataclass
 class Entity:
@@ -60,8 +75,8 @@ class Car(Entity):
     capacity: float
     max_range: float
     exp_range: float
-    slow_charge_rate: float
-    fast_charge_rate: float
+    ac_charge_rate: float
+    dc_charge_rate: float
     search_key: str = "{model}"
 
     @classmethod
@@ -82,8 +97,8 @@ class Charger(Entity):
 
 @dataclass
 class DriveParams:
-    avg_speed: float
-    avg_energy_consumption: float
+    avg_speed: int
+    avg_energy_consumption: int
     daily_start_time: int
     charge_limit: int
 
@@ -195,4 +210,4 @@ class Trip:
 class Itinerary:
     trip: Trip
     drive_params: DriveParams
-    start_date: dt.datetime | None = dt.datetime.now().date()
+    start_date: dt.datetime | None = dt.datetime.now()

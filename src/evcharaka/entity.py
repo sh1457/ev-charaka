@@ -1,7 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
+from importlib.resources import files
 import json
+import datetime as dt
 
 import pandas as pd
 
@@ -25,12 +27,8 @@ class Entity:
 
         q = ' and '.join([f"{k}.astype('str').str.lower().str.contains('{v}')" for k, v in zip(search_terms, key)])
 
-        cwd = Path.cwd()
-        while cwd.name != "ev-charaka":
-            cwd = cwd.parent
-
         entity_path = f"{cls.__name__.lower()}s.csv"
-        path = cwd / "data" / entity_path
+        path = files('evcharaka.data').joinpath(entity_path)
 
         df = None
         try:
@@ -87,6 +85,42 @@ class DriveParams:
     avg_speed: float
     avg_energy_consumption: float
     daily_start_time: int
+    charge_limit: int
+
+
+@dataclass
+class Waypoint:
+    name: str
+    type: str
+    address: str
+    distance: float
+    duration: int
+
+    @classmethod
+    def from_plugshare(cls, data: dict[str,str]) -> Waypoint:
+        type_map = {
+            "icon-M": "marker",
+            "icon-Y": "charger",
+        }
+
+        return cls(
+            name=data["display"],
+            type=type_map.get(data["icon"], "unknown"),
+            address=data["address"],
+            distance=float(data["distance"].strip().split(' ', maxsplit=1)[0]),
+            duration=sum([int(t) * (1 if i-1 == 0 else 60) for i,t in enumerate(reversed(data["duration"].strip().split(' '))) if i%2 == 1]),
+        )
+
+    def __str__(self) -> str:
+        text = (
+            f"[{self.type: >7s}] "
+            f"| {self.distance: >7.2f} km "
+            f"| {hours_human_readable(self.duration)} "
+            f"| {self.name[:40]: >43s}{'...' if len(self.name) > 40 else '   '}"
+            "\n"
+        )
+
+        return text
 
 
 @dataclass
@@ -158,35 +192,7 @@ class Trip:
 
 
 @dataclass
-class Waypoint:
-    name: str
-    type: str
-    address: str
-    distance: float
-    duration: int
-
-    @classmethod
-    def from_plugshare(cls, data: dict[str,str]) -> Waypoint:
-        type_map = {
-            "icon-M": "marker",
-            "icon-Y": "charger",
-        }
-
-        return cls(
-            name=data["display"],
-            type=type_map.get(data["icon"], "unknown"),
-            address=data["address"],
-            distance=float(data["distance"].strip().split(' ', maxsplit=1)[0]),
-            duration=sum([int(t) * (1 if i-1 == 0 else 60) for i,t in enumerate(reversed(data["duration"].strip().split(' '))) if i%2 == 1]),
-        )
-
-    def __str__(self) -> str:
-        text = (
-            f"[{self.type: >7s}] "
-            f"| {self.distance: >7.2f} km "
-            f"| {hours_human_readable(self.duration)} "
-            f"| {self.name[:40]: >43s}{'...' if len(self.name) > 40 else '   '}"
-            "\n"
-        )
-
-        return text
+class Itinerary:
+    trip: Trip
+    drive_params: DriveParams
+    start_date: dt.datetime | None = dt.datetime.now().date()

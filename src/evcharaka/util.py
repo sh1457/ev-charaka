@@ -1,18 +1,5 @@
 """Collection of functions that represent math behind distance estimation, charge and discharge functions"""
-# Formatting
-def fractional_hours_human_readable(hours: float) -> str:
-    return f"{int(hours):02d}:{int((hours - int(hours)) * 60):02d}"
-
-
-def hours_human_readable(total_hours: int) -> str:
-    days, remainder_total_hours = divmod(total_hours, 24 * 60)
-    hours, minutes = divmod(remainder_total_hours, 60)
-    text = [
-        f"{days: 3d} days" if days else ' ' * 8,
-        f"{hours:02d} hr" if hours else ' ' * 5,
-        f"{minutes:02d} min" if minutes else ' ' * 6,
-    ]
-    return ' '.join(text)
+from evcharaka.entity import Car, Charger
 
 
 # Estimation
@@ -25,30 +12,20 @@ def estimate_distance(avg_energy_consumption: float, capacity: float) -> float:
 
 
 def estimate_charge(distance: float, avg_energy_consumption: float, capacity: float) -> float:
-    return ((distance * avg_energy_consumption) / (capacity * 1e3)) * 100
+    return round((distance * avg_energy_consumption) / (capacity * 1e3), 4) * 100
 
 
-def estimate_charging_time(
-    charger_rating: float,
-    from_soc: float,
-    to_soc: float,
-    capacity: float,
-    slow_charge_rate: float,
-    fast_charge_rate: float,
-    fast_charge: bool=True,
-    buffer_time: float = 0.5
-) -> float:
-    if 0.0 >= from_soc >= to_soc >= 100.0:
+def estimate_charging_time(car: Car, charger: Charger, from_soc: float, to_soc: float) -> float:
+    if not (100 >= to_soc >= 0 and 100 >= from_soc >= 0 and to_soc >= from_soc):
         raise ValueError("to_soc must be greater than from_soc")
 
-    if to_soc <= 80.0:
-        buffer_time = 0.167
+    buffer_time = 0 if to_soc <= 95 else 0.5
+    max_onboard_rate = car.dc_charge_rate if charger.type == "DC" else car.ac_charge_rate
+    charge_rate = min(charger.charge_rate, max_onboard_rate)
 
-    max_onboard_rate = fast_charge_rate if fast_charge else slow_charge_rate
-    charge_rate = min(charger_rating, max_onboard_rate)
-    charge_time = ((capacity * ((to_soc - from_soc) / 1e2)) / charge_rate) + buffer_time
+    charge_time = ((car.capacity * ((to_soc - from_soc) / 1e2)) / charge_rate) + buffer_time
 
-    return charge_time
+    return round(charge_time, 2)
 
 
 # Actual
